@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/expense.dart';
 import '../notifiers/app_notifier.dart';
+import '../notifiers/theme_notifier.dart';
 import '../utils/formatters.dart';
 import '../widgets/add_expense_sheet.dart';
 import '../widgets/expense_tile.dart';
@@ -16,9 +17,14 @@ abstract final class _Strings {
 }
 
 class ExpenseListScreen extends StatelessWidget {
-  const ExpenseListScreen({super.key, required this.notifier});
+  const ExpenseListScreen({
+    super.key,
+    required this.notifier,
+    required this.themeNotifier,
+  });
 
   final AppNotifier notifier;
+  final ThemeNotifier themeNotifier;
 
   void _openAddSheet(BuildContext context) {
     showModalBottomSheet<void>(
@@ -47,9 +53,9 @@ class ExpenseListScreen extends StatelessWidget {
             tooltip: _Strings.viewSummary,
           ),
           IconButton(
-            onPressed: notifier.toggleDarkMode,
+            onPressed: themeNotifier.toggleDarkMode,
             icon: Icon(
-              notifier.isDarkMode ? Icons.light_mode : Icons.dark_mode,
+              themeNotifier.isDarkMode ? Icons.light_mode : Icons.dark_mode,
             ),
             tooltip: _Strings.toggleTheme,
           ),
@@ -85,7 +91,7 @@ class ExpenseListScreen extends StatelessWidget {
                               ),
                             ),
                             onDismissed: (_) {
-                              notifier.removeExpense(expense);
+                              notifier.removeExpense(expense.id);
                             },
                             child: ExpenseTile(expense: expense),
                           );

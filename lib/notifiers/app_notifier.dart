@@ -1,23 +1,33 @@
+import 'dart:collection';
+
 import 'package:flutter/foundation.dart';
 
 import '../data/expense_repository.dart';
 import '../models/category_total.dart';
 import '../models/expense.dart';
+import '../models/monthly_summary.dart';
 
 /// Central state for the app.
 class AppNotifier extends ChangeNotifier {
-  AppNotifier(this._repository) {
-    _expenses = _repository.loadInitialExpenses();
+  AppNotifier(this._repository, {DateTime Function()? now})
+      : _now = now ?? DateTime.now {
+    // Defensively copy: callers shouldn't have to guarantee the
+    // repository returns a fresh, mutable, unshared list.
+    _expenses = List.of(_repository.loadInitialExpenses());
   }
 
   final ExpenseRepository _repository;
 
+  /// Injectable clock so time-dependent logic (e.g. [monthlySummary]) can
+  /// be unit tested with a fixed point in time instead of the wall clock.
+  final DateTime Function() _now;
+
   late final List<Expense> _expenses;
 
-  List<Expense> get expenses => List.unmodifiable(_expenses);
+  List<Expense> get expenses => UnmodifiableListView(_expenses);
 
-  void removeExpense(Expense expense) {
-    _expenses.remove(expense);
+  void removeExpense(String id) {
+    _expenses.removeWhere((expense) => expense.id == id);
     notifyListeners();
   }
 
@@ -28,19 +38,13 @@ class AppNotifier extends ChangeNotifier {
   ExpenseCategory? get selectedCategory => _selectedCategory;
 
   List<Expense> get filteredExpenses {
-    if (_selectedCategory == null) {
-      return _expenses;
-    }
-    return _expenses.where((e) => e.category == _selectedCategory).toList();
+    final expenses = _selectedCategory == null
+        ? _expenses
+        : _expenses.where((e) => e.category == _selectedCategory);
+    return UnmodifiableListView(expenses);
   }
 
-  double get total {
-    var sum = 0.0;
-    for (final expense in filteredExpenses) {
-      sum += expense.amount;
-    }
-    return sum;
-  }
+  double get total => _totalOf(filteredExpenses);
 
   void selectCategory(ExpenseCategory? category) {
     _selectedCategory = category;
@@ -60,18 +64,9 @@ class AppNotifier extends ChangeNotifier {
   double _totalOf(Iterable<Expense> expenses) =>
       expenses.fold(0.0, (sum, expense) => sum + expense.amount);
 
-  double get currentMonthTotal => _totalOf(_expensesInMonth(DateTime.now()));
-
-  double get previousMonthTotal {
-    final now = DateTime.now();
-    return _totalOf(_expensesInMonth(DateTime(now.year, now.month - 1)));
-  }
-
-  /// Per-category totals for the current month, sorted by amount descending.
-  /// Categories with no spending this month are omitted.
-  List<CategoryTotal> get currentMonthCategoryTotals {
+  List<CategoryTotal> _categoryTotalsOf(Iterable<Expense> expenses) {
     final totals = <ExpenseCategory, double>{};
-    for (final expense in _expensesInMonth(DateTime.now())) {
+    for (final expense in expenses) {
       totals.update(
         expense.category,
         (value) => value + expense.amount,
@@ -84,59 +79,45 @@ class AppNotifier extends ChangeNotifier {
     ]..sort((a, b) => b.amount.compareTo(a.amount));
   }
 
-  // ---- Theme ----
+  MonthlySummary get monthlySummary {
+    final now = _now();
+    final currentMonth = DateTime(now.year, now.month);
+    final previousMonth = DateTime(now.year, now.month - 1);
+    final currentMonthExpenses = _expensesInMonth(currentMonth);
 
-  bool _isDarkMode = false;
-
-  bool get isDarkMode => _isDarkMode;
-
-  void toggleDarkMode() {
-    _isDarkMode = !_isDarkMode;
-    notifyListeners();
+    return MonthlySummary(
+      currentMonth: currentMonth,
+      previousMonth: previousMonth,
+      currentMonthTotal: _totalOf(currentMonthExpenses),
+      previousMonthTotal: _totalOf(_expensesInMonth(previousMonth)),
+      categoryTotals: _categoryTotalsOf(currentMonthExpenses),
+    );
   }
 
   // ---- New expense form ----
 
-  String draftTitle = '';
-  String draftAmount = '';
-  ExpenseCategory draftCategory = ExpenseCategory.other;
-
-  void updateDraftTitle(String value) {
-    draftTitle = value;
-    notifyListeners();
-  }
-
-  void updateDraftAmount(String value) {
-    draftAmount = value;
-    notifyListeners();
-  }
-
-  void updateDraftCategory(ExpenseCategory value) {
-    draftCategory = value;
-    notifyListeners();
-  }
-
-  /// Adds the drafted expense to the list. Returns false when the draft
-  /// is not valid.
-  bool submitDraft() {
-    final title = draftTitle.trim();
-    final amount = double.tryParse(draftAmount.replaceAll(',', '.'));
-    if (title.isEmpty || amount == null || amount <= 0) {
+  /// Validates and adds a new expense. Returns false when [title] or
+  /// [amount] are not valid, in which case nothing is added.
+  bool addExpense({
+    required String title,
+    required String amount,
+    required ExpenseCategory category,
+  }) {
+    final trimmedTitle = title.trim();
+    final parsedAmount = double.tryParse(amount.replaceAll(',', '.'));
+    if (trimmedTitle.isEmpty || parsedAmount == null || parsedAmount <= 0) {
       return false;
     }
     _expenses.insert(
       0,
       Expense(
-        id: DateTime.now().microsecondsSinceEpoch.toString(),
-        title: title,
-        amount: amount,
-        category: draftCategory,
-        date: DateTime.now(),
+        id: _now().microsecondsSinceEpoch.toString(),
+        title: trimmedTitle,
+        amount: parsedAmount,
+        category: category,
+        date: _now(),
       ),
     );
-    draftTitle = '';
-    draftAmount = '';
-    draftCategory = ExpenseCategory.other;
     notifyListeners();
     return true;
   }

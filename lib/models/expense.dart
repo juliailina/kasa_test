@@ -25,20 +25,4 @@ class Expense {
   final double amount;
   final ExpenseCategory category;
   final DateTime date;
-
-  Expense copyWith({
-    String? id,
-    String? title,
-    double? amount,
-    ExpenseCategory? category,
-    DateTime? date,
-  }) {
-    return Expense(
-      id: id ?? this.id,
-      title: title ?? this.title,
-      amount: amount ?? this.amount,
-      category: category ?? this.category,
-      date: date ?? this.date,
-    );
-  }
 }
