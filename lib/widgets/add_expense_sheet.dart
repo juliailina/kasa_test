@@ -79,7 +79,8 @@ class AddExpenseSheet extends StatelessWidget {
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content: Text('Please enter a title and a valid amount.'),
+                        content:
+                            Text('Please enter a title and a valid amount.'),
                       ),
                     );
                   }
