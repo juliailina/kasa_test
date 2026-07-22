@@ -5,6 +5,7 @@ import '../notifiers/app_notifier.dart';
 import '../utils/formatters.dart';
 import '../widgets/add_expense_sheet.dart';
 import '../widgets/expense_tile.dart';
+import 'summary_screen.dart';
 
 abstract final class _Strings {
   static const String appTitle = 'Kasa';
@@ -27,12 +28,24 @@ class ExpenseListScreen extends StatelessWidget {
     );
   }
 
+  void _openSummary(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+          builder: (context) => SummaryScreen(notifier: notifier)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text(_Strings.appTitle),
         actions: [
+          IconButton(
+            onPressed: () => _openSummary(context),
+            icon: const Icon(Icons.bar_chart),
+            tooltip: _Strings.viewSummary,
+          ),
           IconButton(
             onPressed: notifier.toggleDarkMode,
             icon: Icon(
@@ -72,7 +85,7 @@ class ExpenseListScreen extends StatelessWidget {
                               ),
                             ),
                             onDismissed: (_) {
-                              notifier.expenses.remove(expense);
+                              notifier.removeExpense(expense);
                             },
                             child: ExpenseTile(expense: expense),
                           );

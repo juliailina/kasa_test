@@ -19,6 +19,12 @@ class _KasaAppState extends State<KasaApp> {
   final AppNotifier notifier = AppNotifier(ExpenseRepository());
 
   @override
+  void dispose() {
+    notifier.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
       listenable: notifier,

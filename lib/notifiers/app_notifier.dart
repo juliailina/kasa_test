@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../data/expense_repository.dart';
+import '../models/category_total.dart';
 import '../models/expense.dart';
 
 /// Central state for the app.
@@ -13,7 +14,12 @@ class AppNotifier extends ChangeNotifier {
 
   late final List<Expense> _expenses;
 
-  List<Expense> get expenses => _expenses;
+  List<Expense> get expenses => List.unmodifiable(_expenses);
+
+  void removeExpense(Expense expense) {
+    _expenses.remove(expense);
+    notifyListeners();
+  }
 
   // ---- Filtering ----
 
@@ -39,6 +45,43 @@ class AppNotifier extends ChangeNotifier {
   void selectCategory(ExpenseCategory? category) {
     _selectedCategory = category;
     notifyListeners();
+  }
+
+  // ---- Summary ----
+
+  List<Expense> _expensesInMonth(DateTime month) {
+    return _expenses
+        .where(
+          (e) => e.date.year == month.year && e.date.month == month.month,
+        )
+        .toList();
+  }
+
+  double _totalOf(Iterable<Expense> expenses) =>
+      expenses.fold(0.0, (sum, expense) => sum + expense.amount);
+
+  double get currentMonthTotal => _totalOf(_expensesInMonth(DateTime.now()));
+
+  double get previousMonthTotal {
+    final now = DateTime.now();
+    return _totalOf(_expensesInMonth(DateTime(now.year, now.month - 1)));
+  }
+
+  /// Per-category totals for the current month, sorted by amount descending.
+  /// Categories with no spending this month are omitted.
+  List<CategoryTotal> get currentMonthCategoryTotals {
+    final totals = <ExpenseCategory, double>{};
+    for (final expense in _expensesInMonth(DateTime.now())) {
+      totals.update(
+        expense.category,
+        (value) => value + expense.amount,
+        ifAbsent: () => expense.amount,
+      );
+    }
+    return [
+      for (final entry in totals.entries)
+        CategoryTotal(category: entry.key, amount: entry.value),
+    ]..sort((a, b) => b.amount.compareTo(a.amount));
   }
 
   // ---- Theme ----
