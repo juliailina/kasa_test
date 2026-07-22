@@ -2,28 +2,29 @@ import 'package:flutter/material.dart';
 
 import '../models/expense.dart';
 import '../notifiers/app_notifier.dart';
+import '../notifiers/theme_notifier.dart';
+import '../utils/formatters.dart';
 import '../widgets/add_expense_sheet.dart';
 import '../widgets/expense_tile.dart';
+import 'summary_screen.dart';
 
-const _monthNames = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-];
+abstract final class _Strings {
+  static const String appTitle = 'Kasa';
+  static const String toggleTheme = 'Toggle theme';
+  static const String viewSummary = 'View summary';
+  static const String noExpensesYet = 'No expenses yet.';
+  static const String allCategories = 'All';
+}
 
 class ExpenseListScreen extends StatelessWidget {
-  const ExpenseListScreen({super.key, required this.notifier});
+  const ExpenseListScreen({
+    super.key,
+    required this.notifier,
+    required this.themeNotifier,
+  });
 
   final AppNotifier notifier;
+  final ThemeNotifier themeNotifier;
 
   void _openAddSheet(BuildContext context) {
     showModalBottomSheet<void>(
@@ -33,18 +34,30 @@ class ExpenseListScreen extends StatelessWidget {
     );
   }
 
+  void _openSummary(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+          builder: (context) => SummaryScreen(notifier: notifier)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Kasa'),
+        title: const Text(_Strings.appTitle),
         actions: [
           IconButton(
-            onPressed: notifier.toggleDarkMode,
+            onPressed: () => _openSummary(context),
+            icon: const Icon(Icons.bar_chart),
+            tooltip: _Strings.viewSummary,
+          ),
+          IconButton(
+            onPressed: themeNotifier.toggleDarkMode,
             icon: Icon(
-              notifier.isDarkMode ? Icons.light_mode : Icons.dark_mode,
+              themeNotifier.isDarkMode ? Icons.light_mode : Icons.dark_mode,
             ),
-            tooltip: 'Toggle theme',
+            tooltip: _Strings.toggleTheme,
           ),
         ],
       ),
@@ -60,7 +73,7 @@ class ExpenseListScreen extends StatelessWidget {
               const Divider(height: 1),
               Expanded(
                 child: expenses.isEmpty
-                    ? const Center(child: Text('No expenses yet.'))
+                    ? const Center(child: Text(_Strings.noExpensesYet))
                     : ListView.builder(
                         itemCount: expenses.length,
                         itemBuilder: (context, index) {
@@ -78,7 +91,7 @@ class ExpenseListScreen extends StatelessWidget {
                               ),
                             ),
                             onDismissed: (_) {
-                              notifier.expenses.remove(expense);
+                              notifier.removeExpense(expense.id);
                             },
                             child: ExpenseTile(expense: expense),
                           );
@@ -104,7 +117,6 @@ class _TotalHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final now = DateTime.now();
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       child: Card(
@@ -114,12 +126,12 @@ class _TotalHeader extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                '${_monthNames[now.month - 1]} ${now.year}',
+                formatMonthYear(DateTime.now()),
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
               const SizedBox(height: 4),
               Text(
-                'Total: \$${total.toStringAsFixed(2)}',
+                'Total: ${formatCurrency(total)}',
                 style: Theme.of(context).textTheme.headlineSmall,
               ),
             ],
@@ -146,7 +158,7 @@ class _CategoryFilterRow extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4),
             child: FilterChip(
-              label: const Text('All'),
+              label: const Text(_Strings.allCategories),
               selected: notifier.selectedCategory == null,
               onSelected: (_) => notifier.selectCategory(null),
             ),

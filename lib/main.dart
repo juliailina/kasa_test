@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'data/expense_repository.dart';
 import 'notifiers/app_notifier.dart';
+import 'notifiers/theme_notifier.dart';
 import 'screens/expense_list_screen.dart';
 
 void main() {
@@ -17,11 +18,19 @@ class KasaApp extends StatefulWidget {
 
 class _KasaAppState extends State<KasaApp> {
   final AppNotifier notifier = AppNotifier(ExpenseRepository());
+  final ThemeNotifier themeNotifier = ThemeNotifier();
+
+  @override
+  void dispose() {
+    notifier.dispose();
+    themeNotifier.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: notifier,
+      listenable: themeNotifier,
       builder: (context, _) {
         return MaterialApp(
           title: 'Kasa',
@@ -35,8 +44,12 @@ class _KasaAppState extends State<KasaApp> {
               brightness: Brightness.dark,
             ),
           ),
-          themeMode: notifier.isDarkMode ? ThemeMode.dark : ThemeMode.light,
-          home: ExpenseListScreen(notifier: notifier),
+          themeMode:
+              themeNotifier.isDarkMode ? ThemeMode.dark : ThemeMode.light,
+          home: ExpenseListScreen(
+            notifier: notifier,
+            themeNotifier: themeNotifier,
+          ),
         );
       },
     );
