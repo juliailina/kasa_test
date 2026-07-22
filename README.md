@@ -10,6 +10,7 @@ Kasa lets you record day-to-day expenses, browse them by category, and keep an e
 - Swipe to delete an expense
 - Filter the list by category
 - Running total of the visible expenses
+- Summary screen with per-category totals and a this-month vs last-month comparison
 - Light / dark theme toggle
 
 ## Requirements
@@ -38,6 +39,7 @@ lib/
   models/      # domain models
   notifiers/   # app state
   screens/     # screens
+  utils/       # formatting helpers, shared constants
   widgets/     # reusable widgets
 test/          # unit tests
 ```
